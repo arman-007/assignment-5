@@ -1,0 +1,44 @@
+# Compiled source
+*.class
+
+# Packages
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Python
+*.pyc
+__pycache__/
+env/
+
+# Node.js
+node_modules/
+
+# JavaScript
+*.min.js
+*.map
+
+# Environment variables
+# .env
+
+# Build directories
+dist/
+build/
+out/
+
+# Dependency directories
+vendor/
