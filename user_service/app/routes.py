@@ -1,9 +1,13 @@
 from flask import Blueprint, request, jsonify
 from flask_restx import Api, Resource, Namespace, fields
 from werkzeug.security import generate_password_hash, check_password_hash
+from pydantic import ValidationError
 import requests
 import os
 from dotenv import load_dotenv
+
+from .utils import token_required
+from .models import UserRegistrationModel, UserLoginModel
 
 load_dotenv()
 
@@ -11,7 +15,17 @@ AUTHENTICATION_SERVICE_URL = os.getenv('AUTHENTICATION_SERVICE_URL')
 
 # Create a blueprint for user routes
 user_bp = Blueprint('user_bp', __name__)
-api = Api(version='1.0', title='User API', description='API for user registration and management')
+
+# Add security definitions
+authorizations = {
+    'Bearer Auth': {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'Authorization',
+        'description': 'Add "Bearer " followed by your token'
+    }
+}
+api = Api(version='1.0', title='User API', description='API for user registration and management', authorizations=authorizations, security='Bearer Auth')
 
 # In-memory storage for users
 users = {}
@@ -39,19 +53,18 @@ class Register(Resource):
     @api.response(201, 'User successfully registered')
     @api.response(400, 'Invalid email or password')
     def post(self):
-        data = request.get_json()
-        email = data.get('email')
+        try:
+            data = UserRegistrationModel(**request.get_json())
+        except ValidationError as e:
+            return {'errors': e.errors()}, 400
+        email = data.email
         if email in users:
             return {'error': 'User already exists'}, 400
 
-        hashed_password = generate_password_hash(data.get('password'), method='pbkdf2:sha256')
-        users[email] = {
-            'name': data.get('name'),
-            'email': email,
-            'password': hashed_password,
-            'role': data.get('role')
-        }
-        # print(users)
+        hashed_password = generate_password_hash(data.password, method='pbkdf2:sha256')
+        users[email] = data.dict()
+        users[email]['password'] = hashed_password
+
         return {'message': 'User successfully registered'}, 201
 
 # Endpoint to authenticate a user
@@ -61,18 +74,15 @@ class Login(Resource):
     @api.response(200, 'Login successful')
     @api.response(401, 'Invalid email or password')
     def post(self):
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        user = users.get(email)
-        if user and check_password_hash(user['password'], password):
-            print(f'{AUTHENTICATION_SERVICE_URL}/auth/token')
+        try:
+            data = UserLoginModel(**request.get_json())
+        except ValidationError as e:
+            return {'errors': e.errors()}, 400
+
+        user = users.get(data.email)
+        if user and check_password_hash(user['password'], data.password):
+            # Authentication logic here
             return {'message': 'Login successful'}, 200
-            # response = requests.post(f'{AUTHENTICATION_SERVICE_URL}/auth/token', json={'email': email, 'role': user['role']})
-            # if response.status_code == 200:
-            #     return response.json(), 200
-            # else:
-            #     return response.json(), response.status_code
         else:
             return {'error': 'Invalid email or password'}, 401
 
@@ -80,16 +90,23 @@ class Login(Resource):
 # Endpoint to get profile information
 @user_ns.route('/profile')
 class Profile(Resource):
-    @api.doc(params={'email': {'in': 'header', 'description': 'The user\'s email'}})
+    # @api.doc(params={'Authorization': {'in': 'header', 'description': 'Bearer token'}})
     @api.response(200, 'User profile retrieved')
     @api.response(401, 'Unauthorized')
+    @api.response(403, 'Forbidden')
     @api.response(404, 'User not found')
+    @token_required
     def get(self):
-        print(users)
-        email = request.headers.get('email')
+        # print(users)
+        email = request.user['email']
+        # print(request.headers.get('Authorization'))
         user = users.get(email)
 
         if user:
-            return {'name': user['name'], 'email': user['email'], 'role': user['role']}, 200
+            return {
+                'name': user['name'], 
+                'email': user['email'], 
+                'role': user['role']
+            }, 200
         else:
             return {'error': 'User not found'}, 404

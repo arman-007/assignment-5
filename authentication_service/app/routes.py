@@ -46,7 +46,7 @@ class GenerateToken(Resource):
 
         # Create a token valid for 1 hour
         token = jwt.encode({'email': email, 'role': role, 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)}, SECRET_KEY, algorithm='HS256')
-
+        print("received token in /auth/token: ", token)
         return {'token': token}, 200
     
 
@@ -60,6 +60,7 @@ class ValidateToken(Resource):
     def post(self):
         auth_header = request.headers.get('Authorization')
 
+        print("auth_header in /validate", auth_header)
         if not auth_header:
             return {'error': 'Token is missing'}, 403
 
