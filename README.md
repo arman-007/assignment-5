@@ -83,9 +83,8 @@ git clone https://github.com/arman-007/assignment-5.git
 cd assignment-5
 ```
 
-### Create Virtual Environments for Each Service
+### Create Virtual Environment
 
-It's recommended to create separate virtual environments for each microservice to manage dependencies independently.
 
 #### Linux/macOS
 
