@@ -43,7 +43,7 @@ login_model = api.model('Login', {
 })
 
 # Namespace for user operations
-user_ns = Namespace('Users', description='User operations')
+user_ns = Namespace('users', description='User operations')
 api.add_namespace(user_ns)
 
 # Endpoint to register a new user
@@ -81,8 +81,23 @@ class Login(Resource):
 
         user = users.get(data.email)
         if user and check_password_hash(user['password'], data.password):
-            # Authentication logic here
-            return {'message': 'Login successful'}, 200
+            # Prepare the payload with user's email and role
+            payload = {
+                'email': user['email'],
+                'role': user['role']
+            }
+            try:
+                # Call the authentication service to get the token
+                response = requests.post(f'{AUTHENTICATION_SERVICE_URL}/auth/token', json=payload)
+                if response.status_code == 200:
+                    token_data = response.json()
+                    # Return the token to the client
+                    return token_data, 200
+                else:
+                    # If the authentication service returns an error
+                    return {'error': 'Failed to obtain token'}, response.status_code
+            except requests.exceptions.RequestException:
+                return {'error': 'Authentication service unavailable'}, 503
         else:
             return {'error': 'Invalid email or password'}, 401
 

@@ -69,7 +69,7 @@ class AddDestination(Resource):
         return {'message': 'Destination added successfully'}, 201
 
 # Class-based resource for deleting a destination
-@destination_ns.route('/destinations/<int:id>')
+@destination_ns.route('/destinations/<string:id>')
 class Destination(Resource):
     @destination_ns.doc('delete_destination')
     @destination_ns.response(200, 'Destination deleted successfully')

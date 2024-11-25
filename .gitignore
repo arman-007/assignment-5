@@ -33,7 +33,7 @@ node_modules/
 *.map
 
 # Environment variables
-# .env
+.env
 
 # Build directories
 dist/
