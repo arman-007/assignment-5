@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_restx import Api, Resource, fields, Namespace
-import jwt
+import jwt as pyjwt
 import os
 import datetime
 
@@ -10,7 +10,7 @@ from .utils import verify_token
 auth_bp = Blueprint('auth_bp', __name__)
 api = Api(version='1.0', title='Auth API', description='API for authentication and token management')
 # Namespace for user operations
-auth_ns = Namespace('Authentication', description='Authentication operations')
+auth_ns = Namespace('authentication', description='Authentication operations')
 api.add_namespace(auth_ns)
 
 # Secret key for signing JWT tokens (normally, keep this secret and in environment variables)
@@ -45,8 +45,8 @@ class GenerateToken(Resource):
             return {'error': 'Email and role are required'}, 400
 
         # Create a token valid for 1 hour
-        token = jwt.encode({'email': email, 'role': role, 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)}, SECRET_KEY, algorithm='HS256')
-        print("received token in /auth/token: ", token)
+        token = pyjwt.encode({'email': email, 'role': role, 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)}, SECRET_KEY, algorithm='HS256')
+        # print("received token in /auth/token: ", token)
         return {'token': token}, 200
     
 
@@ -72,5 +72,3 @@ class ValidateToken(Resource):
             return data, 401
 
         return {'email': data['email'], 'role': data['role']}, 200
-
-

@@ -43,7 +43,7 @@ login_model = api.model('Login', {
 })
 
 # Namespace for user operations
-user_ns = Namespace('Users', description='User operations')
+user_ns = Namespace('users', description='User operations')
 api.add_namespace(user_ns)
 
 # Endpoint to register a new user
@@ -70,23 +70,40 @@ class Register(Resource):
 # Endpoint to authenticate a user
 @user_ns.route('/login')
 class Login(Resource):
-    @api.expect(login_model)
-    @api.response(200, 'Login successful')
-    @api.response(401, 'Invalid email or password')
+    @user_ns.expect(login_model)
+    @user_ns.response(200, 'Login successful')
+    @user_ns.response(401, 'Invalid email or password')
+    @user_ns.response(500, 'Internal Server Error')
     def post(self):
         try:
+            # Validate incoming request data using Pydantic model
             data = UserLoginModel(**request.get_json())
         except ValidationError as e:
             return {'errors': e.errors()}, 400
 
+        # Verify the user using in-memory data (or replace this with actual database lookup)
         user = users.get(data.email)
         if user and check_password_hash(user['password'], data.password):
-            # Authentication logic here
-            return {'message': 'Login successful'}, 200
+            # Prepare data for the authentication service
+            payload = {
+                "email": data.email,
+                "role": user['role']  # Use the role of the authenticated user
+            }
+
+            # Request a token from the authentication service
+            try:
+                auth_response = requests.post(f"{AUTHENTICATION_SERVICE_URL}/auth/token", json=payload)
+                if auth_response.status_code == 200:
+                    auth_data = auth_response.json()
+                    token = auth_data.get("token")
+
+                    return {'message': 'Login successful', 'token': token}, 200
+                else:
+                    return {'error': 'Failed to generate token from authentication service'}, 401
+            except requests.RequestException as e:
+                return {'error': 'Authentication service is unavailable'}, 500
         else:
             return {'error': 'Invalid email or password'}, 401
-
-
 # Endpoint to get profile information
 @user_ns.route('/profile')
 class Profile(Resource):
